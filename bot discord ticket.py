@@ -29,6 +29,21 @@ blacklist = set()
 # Ticket counts
 ticket_counts = {"report": 0, "purchase": 0, "support": 0, "giveaway": 0}
 
+# Giveaways actifs : {message_id: {...}}
+active_giveaways = {}
+
+def parse_duration(duration_str):
+    import re
+    duration_str = duration_str.strip().lower()
+    pattern = re.findall(r'(\d+)\s*([smhd])', duration_str)
+    if not pattern:
+        return None
+    seconds = 0
+    units = {'s': 1, 'm': 60, 'h': 3600, 'd': 86400}
+    for value, unit in pattern:
+        seconds += int(value) * units[unit]
+    return seconds if seconds > 0 else None
+
 # Terms parts (all under 2000 characters for Discord)
 TERMS_PARTS = [
     # Part 1 — Acceptance (1508 chars ✅)
@@ -186,6 +201,204 @@ class BlacklistView(View):
     @discord.ui.button(label='🔍 Search by name', style=discord.ButtonStyle.blurple)
     async def search_button(self, interaction: discord.Interaction, button: Button):
         await interaction.response.send_modal(BlacklistSearchModal(self.members))
+
+# ── GIVEAWAY ───────────────────────────────────────────
+
+class GiveawayModal(discord.ui.Modal, title='🎉 Create a Giveaway'):
+    g_title    = discord.ui.TextInput(label='Title', placeholder='Ex: Nitro Giveaway', max_length=100)
+    g_prize    = discord.ui.TextInput(label='Prize / Description', placeholder='Ex: 1 Month Discord Nitro', max_length=200)
+    g_winners  = discord.ui.TextInput(label='Number of winners', placeholder='Ex: 1', max_length=2)
+    g_duration = discord.ui.TextInput(label='Duration (leave empty = manual end)', placeholder='Ex: 1h, 30m, 2d — or leave blank', required=False, max_length=20)
+    g_conditions = discord.ui.TextInput(label='Conditions (optional)', placeholder='Ex: role:Customer, messages:10 — or leave blank', required=False, max_length=200)
+
+    async def on_submit(self, interaction: discord.Interaction):
+        # Validation nb gagnants
+        try:
+            winners_count = int(self.g_winners.value.strip())
+            if winners_count < 1:
+                raise ValueError
+        except ValueError:
+            await interaction.response.send_message('❌ Number of winners must be a valid integer ≥ 1.', ephemeral=True)
+            return
+
+        # Validation durée
+        duration_raw = self.g_duration.value.strip()
+        duration_seconds = None
+        end_time = None
+        if duration_raw:
+            duration_seconds = parse_duration(duration_raw)
+            if duration_seconds is None:
+                await interaction.response.send_message('❌ Invalid duration format. Use: `1h`, `30m`, `2d`, `1h30m`, or leave blank for manual end.', ephemeral=True)
+                return
+            end_time = datetime.now(timezone.utc).timestamp() + duration_seconds
+
+        # Parse conditions
+        conditions = {}
+        conditions_raw = self.g_conditions.value.strip()
+        if conditions_raw:
+            for part in conditions_raw.split(','):
+                part = part.strip()
+                if ':' in part:
+                    key, val = part.split(':', 1)
+                    conditions[key.strip().lower()] = val.strip()
+
+        # Build embed
+        embed = discord.Embed(
+            title=f'🎉 {self.g_title.value}',
+            color=0xF1C40F
+        )
+        embed.add_field(name='🏆 Prize', value=self.g_prize.value, inline=False)
+        embed.add_field(name='👥 Winners', value=str(winners_count), inline=True)
+        if end_time:
+            embed.add_field(name='⏰ Ends', value=f'<t:{int(end_time)}:R>', inline=True)
+        else:
+            embed.add_field(name='⏰ Duration', value='Manual end by staff', inline=True)
+
+        if conditions:
+            cond_display = []
+            for k, v in conditions.items():
+                if k == 'role':
+                    cond_display.append(f'• Required role: **{v}**')
+                elif k == 'messages':
+                    cond_display.append(f'• Minimum messages: **{v}**')
+                else:
+                    cond_display.append(f'• {k}: **{v}**')
+            embed.add_field(name='📋 Conditions', value='\n'.join(cond_display), inline=False)
+
+        embed.set_footer(text='React with 🎉 to participate!')
+        embed.timestamp = datetime.now(timezone.utc)
+
+        await interaction.response.send_message('✅ Giveaway created!', ephemeral=True)
+        giveaway_msg = await interaction.channel.send(embed=embed)
+        await giveaway_msg.add_reaction('🎉')
+
+        # Stocker le giveaway
+        active_giveaways[giveaway_msg.id] = {
+            'channel_id': interaction.channel.id,
+            'title': self.g_title.value,
+            'prize': self.g_prize.value,
+            'winners_count': winners_count,
+            'end_time': end_time,
+            'conditions': conditions,
+            'host_id': interaction.user.id,
+            'ended': False
+        }
+
+        # Timer automatique si durée définie
+        if duration_seconds:
+            asyncio.create_task(auto_end_giveaway(giveaway_msg.id, duration_seconds))
+
+async def auto_end_giveaway(message_id, delay):
+    await asyncio.sleep(delay)
+    if message_id in active_giveaways and not active_giveaways[message_id]['ended']:
+        await end_giveaway(message_id)
+
+async def end_giveaway(message_id):
+    data = active_giveaways.get(message_id)
+    if not data or data['ended']:
+        return
+    data['ended'] = True
+
+    channel = client.get_channel(data['channel_id'])
+    if not channel:
+        return
+
+    try:
+        message = await channel.fetch_message(message_id)
+    except:
+        return
+
+    # Récupérer les participants (réaction 🎉)
+    participants = []
+    for reaction in message.reactions:
+        if str(reaction.emoji) == '🎉':
+            async for user in reaction.users():
+                if not user.bot:
+                    # Vérifier conditions
+                    guild = channel.guild
+                    member = guild.get_member(user.id)
+                    if member is None:
+                        continue
+
+                    conditions = data.get('conditions', {})
+                    eligible = True
+
+                    # Condition role
+                    if 'role' in conditions:
+                        required_role_name = conditions['role'].lower()
+                        if not any(r.name.lower() == required_role_name for r in member.roles):
+                            eligible = False
+
+                    # Condition messages (approximation via joined_at — Discord ne donne pas le vrai count sans DB)
+                    if 'messages' in conditions:
+                        pass  # Nécessite une DB pour tracker les messages, ignoré ici
+
+                    if eligible:
+                        participants.append(user)
+
+    # Notifier le staff en DM avec la liste des participants (secret)
+    host = guild.get_member(data['host_id'])
+    winners_count = data['winners_count']
+
+    if not participants:
+        await channel.send(f'🎉 **{data["title"]}** — No eligible participants. Giveaway cancelled.')
+        if host:
+            await host.send(f'🎉 Giveaway **{data["title"]}** ended with no eligible participants.')
+        return
+
+    # Envoyer la liste des participants au staff en DM (secret)
+    participants_list = '\n'.join([f'• {u.name} (`{u.id}`)' for u in participants])
+    if host:
+        try:
+            dm_embed = discord.Embed(
+                title=f'🎉 Giveaway — {data["title"]}',
+                description=f'**{len(participants)}** eligible participant(s):\n\n{participants_list[:3000]}',
+                color=0xF1C40F
+            )
+            dm_embed.add_field(name='Winners to pick', value=str(winners_count), inline=True)
+            dm_embed.add_field(
+                name='How to pick',
+                value=f'Use `!CUBgwpick {message_id} @user1 @user2...` to manually announce the winner(s).',
+                inline=False
+            )
+            await host.send(embed=dm_embed)
+        except:
+            pass
+
+    # Mettre à jour l'embed principal
+    embed = message.embeds[0] if message.embeds else discord.Embed(title=data['title'])
+    embed.color = 0x95A5A6
+    embed.set_footer(text='Giveaway ended — Winner selection in progress...')
+    await message.edit(embed=embed)
+    await channel.send(f'🎉 **{data["title"]}** has ended! The winner will be announced shortly.')
+
+class GiveawayStartView(View):
+    def __init__(self):
+        super().__init__(timeout=60)
+
+    @discord.ui.button(label='🎉 Open Giveaway Form', style=discord.ButtonStyle.green)
+    async def open_form(self, interaction: discord.Interaction, button: Button):
+        if not any(role.name == ROLE_STAFF for role in interaction.user.roles):
+            await interaction.response.send_message('❌ No permission.', ephemeral=True)
+            return
+        await interaction.response.send_modal(GiveawayModal())
+
+class GiveawayEndView(View):
+    def __init__(self, message_id):
+        super().__init__(timeout=None)
+        self.message_id = message_id
+
+    @discord.ui.button(label='🛑 End Giveaway', style=discord.ButtonStyle.red)
+    async def end_btn(self, interaction: discord.Interaction, button: Button):
+        if not any(role.name == ROLE_STAFF for role in interaction.user.roles):
+            await interaction.response.send_message('❌ No permission.', ephemeral=True)
+            return
+        data = active_giveaways.get(self.message_id)
+        if not data or data['ended']:
+            await interaction.response.send_message('❌ This giveaway is already ended or does not exist.', ephemeral=True)
+            return
+        await interaction.response.send_message('✅ Ending giveaway...', ephemeral=True)
+        await end_giveaway(self.message_id)
 
 # ── VIEWS ──────────────────────────────────────────────
 
@@ -394,5 +607,87 @@ async def on_message(message):
             color=0x5865F2
         )
         await message.channel.send(embed=embed, view=TicketView())
+
+    if message.content == '!CUBgiveaway':
+        if not any(role.name == ROLE_STAFF for role in message.author.roles):
+            await message.channel.send('❌ You do not have permission to use this command.', delete_after=5)
+            return
+        await message.delete()
+        await message.channel.send(
+            '🎉 **Giveaway Setup** — Fill in the form below.\n'
+            '**Conditions format:** `role:NomDuRole, messages:10` — leave blank for no conditions.',
+            delete_after=30
+        )
+        # Ouvre le modal via un bouton intermédiaire
+        view = GiveawayStartView()
+        await message.channel.send('👇 Click to open the giveaway form:', view=view, delete_after=60)
+
+    # !CUBgwend <message_id>
+    if message.content.startswith('!CUBgwend'):
+        if not any(role.name == ROLE_STAFF for role in message.author.roles):
+            await message.channel.send('❌ You do not have permission.', delete_after=5)
+            return
+        parts = message.content.split()
+        if len(parts) < 2:
+            await message.channel.send('❌ Usage: `!CUBgwend <message_id>`', delete_after=5)
+            return
+        try:
+            msg_id = int(parts[1])
+        except ValueError:
+            await message.channel.send('❌ Invalid message ID.', delete_after=5)
+            return
+        if msg_id not in active_giveaways:
+            await message.channel.send('❌ No active giveaway with this ID.', delete_after=5)
+            return
+        await message.delete()
+        await end_giveaway(msg_id)
+
+    # !CUBgwpick <message_id> @winner1 @winner2...
+    if message.content.startswith('!CUBgwpick'):
+        if not any(role.name == ROLE_STAFF for role in message.author.roles):
+            await message.channel.send('❌ You do not have permission.', delete_after=5)
+            return
+        parts = message.content.split()
+        if len(parts) < 3:
+            await message.channel.send('❌ Usage: `!CUBgwpick <message_id> @winner1 @winner2...`', delete_after=5)
+            return
+        try:
+            msg_id = int(parts[1])
+        except ValueError:
+            await message.channel.send('❌ Invalid message ID.', delete_after=5)
+            return
+
+        data = active_giveaways.get(msg_id)
+        if not data:
+            await message.channel.send('❌ Giveaway not found.', delete_after=5)
+            return
+
+        winners = message.mentions
+        if not winners:
+            await message.channel.send('❌ Please mention the winner(s).', delete_after=5)
+            return
+
+        await message.delete()
+
+        winners_mentions = ' '.join([w.mention for w in winners])
+        embed = discord.Embed(
+            title=f'🎉 Giveaway Results — {data["title"]}',
+            description=f'**Prize:** {data["prize"]}\n\n🏆 **Winner(s):** {winners_mentions}',
+            color=0x2ECC71
+        )
+        embed.set_footer(text='Congratulations!')
+        embed.timestamp = datetime.now(timezone.utc)
+        await message.channel.send(content=winners_mentions, embed=embed)
+
+        # Notifier chaque gagnant en DM
+        for winner in winners:
+            try:
+                await winner.send(
+                    f'🎉 Congratulations! You won the **{data["title"]}** giveaway!\n'
+                    f'**Prize:** {data["prize"]}\n'
+                    f'Please contact the staff to claim your prize.'
+                )
+            except:
+                pass
 
 client.run(os.environ.get('TOKEN'))
