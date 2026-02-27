@@ -2,6 +2,7 @@ import discord
 from discord.ui import Button, View
 import asyncio
 import os
+from datetime import datetime, timezone
 
 intents = discord.Intents.default()
 intents.message_content = True
@@ -14,6 +15,7 @@ ROLE_CUSTOMER_ID = 1476719917255360664
 ROLE_VERIFIED2_ID = 1476889969493803164
 RULES_CHANNEL_ID = 1476293487228882975
 TERMS_CHANNEL_ID = 1476720732711948438
+ALERT_CHANNEL_ID = 1476925461480083489
 ROLE_STAFF = "Staff"
 
 # Ticket counts
@@ -28,6 +30,36 @@ TERMS_PARTS = [
     'All content, structures, branding elements, digital assets, and conceptual frameworks associated with this server constitute the exclusive intellectual property of the administration, and any unauthorized reproduction, redistribution, resale, or exploitation of such materials is strictly prohibited. Prices may be modified at any time without notice, and previous transactions do not create entitlement to retroactive adjustments or compensation. You are solely responsible for ensuring your participation complies with all laws applicable within your jurisdiction.',
     'Communication with staff must remain respectful at all times and no response time is guaranteed. The administration reserves the exclusive and final authority to interpret and enforce these Terms. If any provision is determined to be invalid or unenforceable, the remaining provisions shall continue in full force and effect. These Terms constitute the entire agreement between you and the administration and supersede any prior communications or informal understandings.\n\nBy remaining in the server, completing any payment, or otherwise engaging with the community, you irrevocably confirm that you have voluntarily chosen to participate under these conditions, accept all associated risks and limitations, and waive the administration from any claim or dispute inconsistent with these Terms, to the fullest extent permitted by law.\n─────────────────────────'
 ]
+
+# ── ALT DETECTION ──────────────────────────────────────
+
+def get_suspicion_score(member):
+    score = 0
+    reasons = []
+
+    account_age = (datetime.now(timezone.utc) - member.created_at).days
+    if account_age < 7:
+        score += 4
+        reasons.append(f'Account created **{account_age}** day(s) ago')
+    elif account_age < 30:
+        score += 2
+        reasons.append(f'Account created **{account_age}** days ago')
+
+    if member.avatar is None:
+        score += 2
+        reasons.append('No profile picture')
+
+    username = member.name.lower()
+    digit_ratio = sum(c.isdigit() for c in username) / max(len(username), 1)
+    if digit_ratio > 0.4:
+        score += 2
+        reasons.append(f'Suspicious username (`{member.name}`)')
+
+    if len(member.name) < 4:
+        score += 1
+        reasons.append('Very short username')
+
+    return score, reasons
 
 # ── VIEWS ──────────────────────────────────────────────
 
@@ -127,9 +159,35 @@ async def on_ready():
     print(f'Connecté en tant que {client.user}')
 
 @client.event
+async def on_member_join(member):
+    score, reasons = get_suspicion_score(member)
+    if score >= 4:
+        channel = client.get_channel(ALERT_CHANNEL_ID)
+        embed = discord.Embed(
+            title='『🔍』𝗗𝗼𝘂𝗯𝗹𝗲 𝗮𝗰𝗰𝗼𝘂𝗻𝘁 𝗗𝗲𝘁𝗲𝗰𝘁𝗲𝗱',
+            color=0xFF0000
+        )
+        embed.add_field(name='User', value=f'{member.mention} (`{member.name}` | `{member.id}`)', inline=False)
+        embed.add_field(name='Suspicion Score', value=f'**{score}/9**', inline=False)
+        embed.add_field(name='Reasons', value='\n'.join(f'• {r}' for r in reasons), inline=False)
+        embed.set_thumbnail(url=member.display_avatar.url)
+        embed.timestamp = datetime.now(timezone.utc)
+        await channel.send(embed=embed)
+        try:
+            await member.ban(reason=f'Suspected alt account (score: {score}/9)')
+        except discord.Forbidden:
+            await channel.send(f'⚠️ Could not ban {member.mention}, missing permissions.')
+
+@client.event
 async def on_message(message):
     if message.author == client.user:
         return
+
+    if message.content == '!CUBclear':
+        if not any(role.name == ROLE_STAFF for role in message.author.roles):
+            await message.channel.send('❌ You do not have permission to use this command.', delete_after=5)
+            return
+        await message.channel.purge()
 
     if message.content == '!CUBrules':
         await message.delete()
