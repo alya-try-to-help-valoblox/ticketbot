@@ -11,6 +11,7 @@ client = discord.Client(intents=intents)
 # IDs
 ROLE_MEMBRE_ID = 1476712243138920448
 ROLE_CUSTOMER_ID = 1476719917255360664
+ROLE_VERIFIED2_ID = 1476889969493803164
 RULES_CHANNEL_ID = 1476293487228882975
 TERMS_CHANNEL_ID = 1476720732711948438
 ROLE_STAFF = "Staff"
@@ -21,15 +22,10 @@ ticket_counts = {"report": 0, "purchase": 0, "support": 0, "giveaway": 0}
 # Terms parts
 TERMS_PARTS = [
     '📋 **TERMS OF USE**\n─────────────────────────\n\nBy accessing, joining, remaining within, interacting with, browsing, observing, participating in, purchasing from, transacting with, communicating through, or otherwise engaging in any manner whatsoever with this Discord server, any of its channels, sections, categories, systems, automated processes, bots, digital services, digital goods, content structures, community features, transactional mechanisms, or administrative functions, you hereby acknowledge, declare, affirm, represent, warrant, and irrevocably agree that you have read, understood, comprehended, analyzed, and fully accepted these Terms of Use in their entirety without limitation, qualification, objection, contestation, or reservation of any nature whatsoever, and you further acknowledge that your decision to access or remain within the server is voluntary, informed, intentional, and undertaken at your own sole initiative and risk.',
-
     'You further recognize and accept that these Terms may be modified, updated, amended, supplemented, rewritten, expanded, reduced, replaced, or otherwise altered at any time, for any reason, with or without justification, explanation, notice, warning, announcement, or individualized communication, at the sole, absolute, exclusive, discretionary, and unilateral authority of the server administration, and that it is entirely your responsibility to review these Terms periodically and proactively, and that continued presence within the server or completion of any transaction shall constitute automatic, binding, enforceable, and irrevocable acceptance of any such modification. This server operates as an independent digital entity and is neither affiliated with, endorsed by, sponsored by, nor officially connected to Discord. All services are delivered strictly on an "as is" and "as available" basis without warranties of any kind.',
-
     'Payment for any and all services must be made in full, in advance, and must be successfully confirmed prior to the initiation or delivery of any service under any circumstance, without exception. Any attempt to reverse a completed transaction, initiate a chargeback, open a dispute, or otherwise undermine the integrity of a completed and delivered transaction shall result in immediate, irreversible, and permanent termination of access to the server and all associated services, without warning or compensation, and may additionally be reported to the relevant payment processor or authority. All sales are final and non-refundable except exclusively in the singular case of a demonstrable duplicate billing caused solely by a confirmed payment processor error.',
-
     'Access to this server constitutes a revocable privilege granted at the sole discretion of the administration and does not create any ownership interest, partnership, employment relationship, or legally enforceable entitlement beyond the limited scope of the specific digital service purchased. Under no circumstances shall the server owner, administrators, moderators, or any individual associated with the operation of this server be held liable for any direct, indirect, incidental, consequential, punitive, or special damages arising out of or in connection with the use of any service, including but not limited to loss of profits, account suspensions by Discord, loss of data, reputational harm, or any circumstance beyond the reasonable control of the administration.',
-
     'All content, structures, branding elements, digital assets, and conceptual frameworks associated with this server constitute the exclusive intellectual property of the administration, and any unauthorized reproduction, redistribution, resale, or exploitation of such materials is strictly prohibited. Prices may be modified at any time without notice, and previous transactions do not create entitlement to retroactive adjustments or compensation. You are solely responsible for ensuring your participation complies with all laws applicable within your jurisdiction.',
-
     'Communication with staff must remain respectful at all times and no response time is guaranteed. The administration reserves the exclusive and final authority to interpret and enforce these Terms. If any provision is determined to be invalid or unenforceable, the remaining provisions shall continue in full force and effect. These Terms constitute the entire agreement between you and the administration and supersede any prior communications or informal understandings.\n\nBy remaining in the server, completing any payment, or otherwise engaging with the community, you irrevocably confirm that you have voluntarily chosen to participate under these conditions, accept all associated risks and limitations, and waive the administration from any claim or dispute inconsistent with these Terms, to the fullest extent permitted by law.\n─────────────────────────'
 ]
 
@@ -54,11 +50,15 @@ class TermsView(View):
 
     @discord.ui.button(label='✅ Accept the Terms of Use', style=discord.ButtonStyle.green, custom_id='accept_terms')
     async def accept(self, interaction: discord.Interaction, button: Button):
-        role = interaction.guild.get_role(ROLE_CUSTOMER_ID)
-        if role in interaction.user.roles:
+        role_customer = interaction.guild.get_role(ROLE_CUSTOMER_ID)
+        role_verified = interaction.guild.get_role(ROLE_MEMBRE_ID)
+        role_verified2 = interaction.guild.get_role(ROLE_VERIFIED2_ID)
+        if role_customer in interaction.user.roles:
             await interaction.response.send_message('You have already accepted the Terms of Use.', ephemeral=True)
         else:
-            await interaction.user.add_roles(role)
+            await interaction.user.add_roles(role_customer)
+            await interaction.user.add_roles(role_verified2)
+            await interaction.user.remove_roles(role_verified)
             await interaction.response.send_message('✅ Terms accepted! You now have access to our Nitro services.', ephemeral=True)
 
 class CloseButton(View):
