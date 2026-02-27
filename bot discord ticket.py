@@ -23,6 +23,9 @@ ROLE_STAFF = "Staff"
 # Whitelist
 whitelist = set()
 
+# Blacklist
+blacklist = set()
+
 # Ticket counts
 ticket_counts = {"report": 0, "purchase": 0, "support": 0, "giveaway": 0}
 
@@ -113,6 +116,76 @@ class WhitelistView(View):
     def __init__(self, banned_users):
         super().__init__(timeout=60)
         self.add_item(WhitelistSelect(banned_users))
+
+# ── BLACKLIST SELECT ────────────────────────────────────
+
+class BlacklistSelect(Select):
+    def __init__(self, members, search_query=''):
+        filtered = [m for m in members if search_query.lower() in m.name.lower()] if search_query else members
+        filtered = filtered[:25]
+
+        if filtered:
+            options = [
+                discord.SelectOption(
+                    label=f'{m.name}'[:100],
+                    value=str(m.id),
+                    description=(('🔴 Blacklisted' if m.id in blacklist else '') + (' ⚪ Whitelisted' if m.id in whitelist else '') + f' | ID: {m.id}')[:100]
+                )
+                for m in filtered
+            ]
+        else:
+            options = [discord.SelectOption(label='No results found', value='none')]
+
+        super().__init__(placeholder='Select a member to blacklist/unblacklist...', options=options)
+        self.members = members
+
+    async def callback(self, interaction: discord.Interaction):
+        if self.values[0] == 'none':
+            await interaction.response.send_message('❌ No member found.', ephemeral=True)
+            return
+
+        user_id = int(self.values[0])
+
+        if user_id in blacklist:
+            blacklist.discard(user_id)
+            await interaction.response.send_message('✅ User has been **removed from the blacklist**.', ephemeral=True)
+        else:
+            blacklist.add(user_id)
+            whitelist.discard(user_id)
+            try:
+                await interaction.guild.ban(discord.Object(id=user_id), reason='Added to blacklist by staff')
+                await interaction.response.send_message('🔨 User has been **blacklisted and banned**.', ephemeral=True)
+            except discord.NotFound:
+                await interaction.response.send_message('🔨 User **added to blacklist** (not currently in server).', ephemeral=True)
+            except discord.Forbidden:
+                await interaction.response.send_message('❌ Could not ban the user (missing permissions).', ephemeral=True)
+
+class BlacklistSearchModal(discord.ui.Modal, title='Search Member'):
+    search = discord.ui.TextInput(label='Username (partial or full)', placeholder='e.g. John', required=True, max_length=32)
+
+    def __init__(self, members):
+        super().__init__()
+        self.members = members
+
+    async def on_submit(self, interaction: discord.Interaction):
+        query = self.search.value
+        view = BlacklistView(self.members, search_query=query)
+        await interaction.response.send_message(
+            f'🔍 Results for **"{query}"** — select a member:',
+            view=view,
+            ephemeral=True
+        )
+
+class BlacklistView(View):
+    def __init__(self, members, search_query=''):
+        super().__init__(timeout=60)
+        self.members = members
+        self.search_query = search_query
+        self.add_item(BlacklistSelect(members, search_query))
+
+    @discord.ui.button(label='🔍 Search by name', style=discord.ButtonStyle.blurple)
+    async def search_button(self, interaction: discord.Interaction, button: Button):
+        await interaction.response.send_modal(BlacklistSearchModal(self.members))
 
 # ── VIEWS ──────────────────────────────────────────────
 
@@ -237,6 +310,19 @@ async def create_ticket(interaction, ticket_type, label):
 # ── EVENTS ─────────────────────────────────────────────
 
 @client.event
+async def on_member_join(member):
+    if member.id in blacklist:
+        try:
+            await member.send(
+                '❌ You have been banned from this server.\n\n'
+                '**Reason:** You are blacklisted and cannot join this server.\n'
+                'If you believe this is a mistake, please contact the administration.'
+            )
+        except:
+            pass
+        await member.ban(reason='Blacklisted user — automatic ban on join')
+
+@client.event
 async def on_ready():
     client.add_view(RulesView())
     client.add_view(TermsView())
@@ -265,6 +351,22 @@ async def on_message(message):
             await message.channel.send('No banned users found.', delete_after=5)
             return
         await message.channel.send('Select a user to unban and whitelist :', view=WhitelistView(banned_users), delete_after=60)
+
+    if message.content == '!CUBblacklist':
+        if not any(role.name == ROLE_STAFF for role in message.author.roles):
+            await message.channel.send('❌ You do not have permission to use this command.', delete_after=5)
+            return
+        await message.delete()
+        members = [m for m in message.guild.members if not m.bot]
+        if not members:
+            await message.channel.send('No members found.', delete_after=5)
+            return
+        blacklisted_count = len(blacklist)
+        await message.channel.send(
+            f'🔴 **Blacklist** — {blacklisted_count} user(s) currently blacklisted.\nSelect a member to blacklist or unblacklist:',
+            view=BlacklistView(members),
+            delete_after=60
+        )
 
     if message.content == '!CUBrules':
         await message.delete()
