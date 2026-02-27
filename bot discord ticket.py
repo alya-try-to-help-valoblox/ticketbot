@@ -604,14 +604,16 @@ async def on_message(message):
             await message.channel.send('❌ You do not have permission to use this command.', delete_after=5)
             return
         await message.delete()
-        await message.channel.send(
-            '🎉 **Giveaway Setup** — Fill in the form below.\n'
-            '**Conditions format:** `role:NomDuRole, messages:10` — leave blank for no conditions.',
-            delete_after=30
-        )
-        # Ouvre le modal via un bouton intermédiaire
         view = GiveawayStartView()
-        await message.channel.send('👇 Click to open the giveaway form:', view=view, delete_after=60)
+        try:
+            await message.author.send(
+                '🎉 **Giveaway Setup** — Fill in the form below.\n'
+                '**Conditions format:** `role:NomDuRole, messages:10` — leave blank for no conditions.\n\n'
+                '👇 Click to open the giveaway form:',
+                view=view
+            )
+        except discord.Forbidden:
+            await message.channel.send('❌ Unable to send you a DM. Please enable DMs from server members.', delete_after=5)
 
     # !CUBgwend <message_id>
     if message.content.startswith('!CUBgwend'):
