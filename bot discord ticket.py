@@ -18,6 +18,7 @@ RULES_CHANNEL_ID = 1476293487228882975
 TERMS_CHANNEL_ID = 1476720732711948438
 ALERT_CHANNEL_ID = 1476925461480083489
 ROLE_STAFF_ID = 1476667346386026749
+WELCOME_CHANNEL_ID = 1477387976869806290
 ROLE_STAFF = "Staff"
 
 # Whitelist
@@ -29,7 +30,7 @@ blacklist = set()
 # Ticket counts
 ticket_counts = {"report": 0, "purchase": 0, "support": 0, "giveaway": 0}
 
-# Giveaways actifs : {message_id: {...}}
+# Giveaways actifs
 active_giveaways = {}
 
 def parse_duration(duration_str):
@@ -44,38 +45,19 @@ def parse_duration(duration_str):
         seconds += int(value) * units[unit]
     return seconds if seconds > 0 else None
 
-# Terms parts (all under 2000 characters for Discord)
+# Terms parts
 TERMS_PARTS = [
-    # Part 1 — Acceptance (1508 chars ✅)
     '📋 **TERMS OF SERVICE**\n─────────────────────────\n\n'
     'By accessing, joining, browsing, observing, interacting with, participating in, communicating through, purchasing from, transacting with, or otherwise engaging in any manner whatsoever with this Discord server, including but not limited to its text channels, voice channels, ticket systems, automated bots, moderation systems, digital services, custom services, informational materials, structural components, operational frameworks, transactional mechanisms, and any associated digital environment operated directly or indirectly by the administration, you hereby acknowledge, represent, warrant, affirm, and irrevocably agree that you have carefully read, fully understood, consciously reviewed, and voluntarily accepted these Terms of Service in their entirety without limitation, condition, reservation, modification, exception, qualification, protest, or objection of any kind, and you further acknowledge that your decision to access or remain within this server is undertaken freely, knowingly, intentionally, and at your own sole risk and discretion. You expressly agree that these Terms constitute a legally binding agreement between you and the administration governing your access to and use of the server and all related services, and that your continued presence within the server environment, whether active or passive, visible or invisible, logged in or idle, shall constitute automatic, binding, enforceable, and irrevocable acceptance of these Terms and any subsequent modifications thereto.',
-
-    # Part 2a — Modifications (split from original part 2)
     'These Terms may be updated, amended, revised, expanded, reduced, clarified, reformulated, replaced, or otherwise modified at any time, for any reason or no reason at all, at the sole, exclusive, unilateral, and discretionary authority of the administration, without prior notice, warning, explanation, individualized communication, or public announcement, and it shall remain solely your responsibility to review these Terms periodically and proactively; your continued access to or use of the server following any such modification shall constitute conclusive evidence of your acceptance of the revised Terms regardless of whether you have actually reviewed the updated version. You acknowledge that ignorance of the Terms, partial reading, misunderstanding, or failure to review updates does not exempt you from compliance and shall not be accepted as a defense under any circumstance.',
-
-    # Part 2b — No warranty (split from original part 2)
     'This server operates independently and is not affiliated with, endorsed by, sponsored by, officially connected to, legally partnered with, or otherwise associated with Discord, and any belief, implication, or representation suggesting otherwise is expressly denied and disclaimed. All services, digital goods, access privileges, informational content, automation processes, structural systems, and transactional features provided through this server are offered strictly on an "as is," "as available," and "with all faults" basis without warranties, guarantees, assurances, commitments, or representations of any kind, whether express, implied, statutory, customary, oral, written, inferred, assumed, or otherwise constructed, including but not limited to implied warranties of merchantability, fitness for a particular purpose, non-infringement, reliability, uninterrupted availability, error-free operation, compatibility with third-party platforms, legality in your jurisdiction, financial profitability, technical stability, security integrity, or specific outcomes.',
-
-    # Part 3 — Payments (1876 chars ✅)
     'Payment for any service, digital product, access privilege, custom order, or transactional engagement must be made in full, in advance, and successfully confirmed prior to initiation, scheduling, preparation, allocation, reservation, processing, or delivery, without exception, installment arrangement, deferred agreement, partial understanding, verbal commitment, informal message, private conversation, or implied promise overriding this requirement. No staff member, moderator, automated system, or representative shall be deemed to have waived this condition unless such waiver is explicitly and formally documented in a publicly issued written amendment to these Terms. All payments are final due to the digital, intangible, irreversible, and non-returnable nature of the services provided, and refunds shall be strictly limited to demonstrable, objectively verifiable technical malfunctions occurring directly during the payment processing stage itself. Dissatisfaction, misunderstanding, incorrect expectations, personal financial hardship, failure to read descriptions, misinterpretation of service scope, perceived delay, external platform interference, third-party misconduct, bans resulting from rule violations, pricing adjustments, or any reason not directly attributable to a confirmed transactional malfunction shall not constitute valid grounds for refund. Any attempt to initiate a fraudulent chargeback, payment dispute, reversal request, false non-delivery claim, or abuse of payment protection systems shall result in immediate and permanent termination of access.',
-
-    # Part 4a — Revocable access (split from original part 4)
     'Access to this server constitutes a revocable, conditional, limited privilege rather than a right, ownership interest, contractual guarantee of permanence, employment relationship, partnership, joint venture, agency agreement, fiduciary duty, franchise, or entitlement of any form. The administration reserves the absolute and unrestricted authority to suspend, restrict, limit, or permanently revoke access at any time, with or without explanation, justification, prior warning, or compensation, if deemed necessary for operational integrity, community protection, reputational safeguarding, fraud prevention, regulatory compliance, security maintenance, risk mitigation, or any other reason considered sufficient by the administration in its sole discretion.',
-
-    # Part 4b — Liability limitation (split from original part 4)
     'Under no circumstances shall the server owner, founders, administrators, moderators, assistants, affiliates, contractors, successors, assigns, representatives, collaborators, or any individual or entity associated directly or indirectly with the server be held liable for any direct, indirect, incidental, consequential, punitive, exemplary, financial, reputational, digital, virtual, physical, material, or immaterial damages arising out of or in connection with the use of, inability to use, interruption of, suspension of, modification of, or termination of any service or feature, including but not limited to loss of profits, revenue, business opportunity, data, digital assets, account standing, community reputation, algorithmic visibility, platform access, or third-party relationships, regardless of the legal theory invoked and to the maximum extent permitted by applicable law.',
-
-    # Part 5a — Monitoring & data retention (split from original part 5)
     'You acknowledge that the administration retains the unrestricted right to implement monitoring systems, logging mechanisms, ticket archiving procedures, automated moderation bots, anti-fraud detection tools, behavioral analysis systems, and transactional verification protocols for the purposes of security, operational integrity, fraud prevention, dispute resolution, quality control, and regulatory compliance. Any data, communication, ticket transcript, transaction record, message log, payment confirmation, or interaction history generated within the server may be retained for an indefinite duration where deemed reasonably necessary for administrative, evidentiary, protective, or compliance-related purposes. You agree that such retention does not constitute surveillance beyond reasonable operational necessity and does not create liability for the administration.',
-
-    # Part 5b — Service changes & force majeure (split from original part 5)
     'The administration may, at its sole discretion, modify service structures, pricing models, access tiers, benefit allocations, feature availability, automation logic, or community privileges without incurring liability for perceived loss of value, expectation misalignment, or comparative disadvantage relative to prior conditions. No historical configuration of services shall create an ongoing obligation to maintain identical structures in the future. Force majeure events shall include, without limitation, acts of God, natural disasters, earthquakes, floods, fires, pandemics, epidemics, governmental restrictions, regulatory changes, sanctions, embargoes, civil unrest, riots, war, terrorism, labor disputes, infrastructure failures, internet backbone outages, DNS failures, hosting provider disruptions, data center incidents, cybersecurity attacks, ransomware incidents, distributed denial-of-service attacks, third-party API shutdowns, payment processor suspensions, platform-wide moderation sweeps, or any event beyond the reasonable control of the administration, and no such event shall give rise to liability, compensation, refund obligation, or damages claim.',
-
-    # Part 6 — Waiver & liability cap (1631 chars ✅)
     'You expressly waive any claim based on alleged reliance, expectation interest, promissory estoppel, implied continuity, informal assurance, community assumption, or subjective interpretation of staff communications that contradict the explicit written Terms contained herein. Only formally published written provisions shall be considered authoritative and binding. Any informal statement, casual message, estimated timeframe, preliminary discussion, or speculative comment made by any staff member shall not constitute a legally enforceable guarantee, representation, or contractual commitment.\n\n'
     'To the maximum extent permitted by applicable law, the total cumulative liability of the administration shall not exceed the total amount actually paid by you, if any, for the specific service directly giving rise to the claim. You irrevocably waive any right to participate in class actions, collective arbitration, mass claims, or representative litigation of any kind. You further acknowledge that electronic acceptance of these Terms through continued server presence constitutes valid and binding agreement equivalent to a handwritten signature.',
-
-    # Part 7 — Indemnification & final agreement (1630 chars ✅)
     'You agree to indemnify, defend, and hold harmless the administration from and against any and all claims, liabilities, damages, losses, costs, expenses, penalties, fines, proceedings, investigations, or legal fees arising from your breach of these Terms, misuse of services, violation of applicable laws, infringement of intellectual property rights, fraudulent activity, abusive conduct, or unauthorized exploitation of server materials.\n\n'
     'Any dispute shall be resolved exclusively through confidential binding arbitration in a jurisdiction determined solely by the administration. You waive any right to trial by jury or participation in class actions. Any claim must be brought within one (1) year from the date it arises, after which it shall be permanently barred. If any provision is deemed invalid or unenforceable, the remaining provisions shall remain in full force and effect.\n\n'
     'These Terms constitute the entire agreement between you and the administration and supersede all prior communications, representations, or agreements, whether oral or written. By remaining in the server or completing any transaction, you irrevocably acknowledge that you voluntarily assume all associated risks and agree to be bound fully and completely by these Terms to the maximum extent permitted by law.\n─────────────────────────'
@@ -86,7 +68,6 @@ TERMS_PARTS = [
 def get_suspicion_score(member):
     score = 0
     reasons = []
-
     account_age = (datetime.now(timezone.utc) - member.created_at).days
     if account_age < 7:
         score += 4
@@ -94,21 +75,17 @@ def get_suspicion_score(member):
     elif account_age < 30:
         score += 2
         reasons.append(f'Account created **{account_age}** days ago')
-
     if member.avatar is None:
         score += 2
         reasons.append('No profile picture')
-
     username = member.name.lower()
     digit_ratio = sum(c.isdigit() for c in username) / max(len(username), 1)
     if digit_ratio > 0.4:
         score += 2
         reasons.append(f'Suspicious username (`{member.name}`)')
-
     if len(member.name) < 4:
         score += 1
         reasons.append('Very short username')
-
     return score, reasons
 
 # ── WHITELIST SELECT ────────────────────────────────────
@@ -125,7 +102,7 @@ class WhitelistSelect(Select):
         user_id = int(self.values[0])
         whitelist.add(user_id)
         await interaction.guild.unban(discord.Object(id=user_id), reason='Whitelisted by staff')
-        await interaction.response.send_message(f'✅ User has been unbanned and whitelisted.', ephemeral=True)
+        await interaction.response.send_message('✅ User has been unbanned and whitelisted.', ephemeral=True)
 
 class WhitelistView(View):
     def __init__(self, banned_users):
@@ -138,7 +115,6 @@ class BlacklistSelect(Select):
     def __init__(self, members, search_query=''):
         filtered = [m for m in members if search_query.lower() in m.name.lower()] if search_query else members
         filtered = filtered[:25]
-
         if filtered:
             options = [
                 discord.SelectOption(
@@ -150,7 +126,6 @@ class BlacklistSelect(Select):
             ]
         else:
             options = [discord.SelectOption(label='No results found', value='none')]
-
         super().__init__(placeholder='Select a member to blacklist/unblacklist...', options=options)
         self.members = members
 
@@ -158,9 +133,7 @@ class BlacklistSelect(Select):
         if self.values[0] == 'none':
             await interaction.response.send_message('❌ No member found.', ephemeral=True)
             return
-
         user_id = int(self.values[0])
-
         if user_id in blacklist:
             blacklist.discard(user_id)
             await interaction.response.send_message('✅ User has been **removed from the blacklist**.', ephemeral=True)
@@ -185,11 +158,7 @@ class BlacklistSearchModal(discord.ui.Modal, title='Search Member'):
     async def on_submit(self, interaction: discord.Interaction):
         query = self.search.value
         view = BlacklistView(self.members, search_query=query)
-        await interaction.response.send_message(
-            f'🔍 Results for **"{query}"** — select a member:',
-            view=view,
-            ephemeral=True
-        )
+        await interaction.response.send_message(f'🔍 Results for **"{query}"** — select a member:', view=view, ephemeral=True)
 
 class BlacklistView(View):
     def __init__(self, members, search_query=''):
@@ -205,14 +174,13 @@ class BlacklistView(View):
 # ── GIVEAWAY ───────────────────────────────────────────
 
 class GiveawayModal(discord.ui.Modal, title='🎉 Create a Giveaway'):
-    g_title    = discord.ui.TextInput(label='Title', placeholder='Ex: Nitro Giveaway', max_length=100)
-    g_prize    = discord.ui.TextInput(label='Prize / Description', placeholder='Ex: 1 Month Discord Nitro', max_length=200)
-    g_winners  = discord.ui.TextInput(label='Number of winners', placeholder='Ex: 1', max_length=2)
-    g_duration = discord.ui.TextInput(label='Duration (leave empty = manual end)', placeholder='Ex: 1h, 30m, 2d — or leave blank', required=False, max_length=20)
+    g_title         = discord.ui.TextInput(label='Title', placeholder='Ex: Nitro Giveaway', max_length=100)
+    g_prize         = discord.ui.TextInput(label='Prize / Description', placeholder='Ex: 1 Month Discord Nitro', max_length=200)
+    g_winners       = discord.ui.TextInput(label='Number of winners', placeholder='Ex: 1', max_length=2)
+    g_duration      = discord.ui.TextInput(label='Duration (leave empty = manual end)', placeholder='Ex: 1h, 30m, 2d — or leave blank', required=False, max_length=20)
     g_predetermined = discord.ui.TextInput(label='Predetermined winner (optional — User ID)', placeholder='Ex: 123456789012345678 — or leave blank', required=False, max_length=20)
 
     async def on_submit(self, interaction: discord.Interaction):
-        # Validation nb gagnants
         try:
             winners_count = int(self.g_winners.value.strip())
             if winners_count < 1:
@@ -221,7 +189,6 @@ class GiveawayModal(discord.ui.Modal, title='🎉 Create a Giveaway'):
             await interaction.response.send_message('❌ Number of winners must be a valid integer ≥ 1.', ephemeral=True)
             return
 
-        # Validation durée
         duration_raw = self.g_duration.value.strip()
         duration_seconds = None
         end_time = None
@@ -232,13 +199,11 @@ class GiveawayModal(discord.ui.Modal, title='🎉 Create a Giveaway'):
                 return
             end_time = datetime.now(timezone.utc).timestamp() + duration_seconds
 
-        # Gagnant prédéfini
         predetermined_id = None
         predetermined_raw = self.g_predetermined.value.strip()
         if predetermined_raw:
             try:
                 predetermined_id = int(predetermined_raw)
-                # Vérifier que le membre existe
                 member = interaction.guild.get_member(predetermined_id)
                 if member is None:
                     await interaction.response.send_message('❌ Predetermined winner ID not found in this server.', ephemeral=True)
@@ -247,18 +212,13 @@ class GiveawayModal(discord.ui.Modal, title='🎉 Create a Giveaway'):
                 await interaction.response.send_message('❌ Invalid User ID for predetermined winner.', ephemeral=True)
                 return
 
-        # Build embed
-        embed = discord.Embed(
-            title=f'🎉 {self.g_title.value}',
-            color=0xF1C40F
-        )
+        embed = discord.Embed(title=f'🎉 {self.g_title.value}', color=0xF1C40F)
         embed.add_field(name='🏆 Prize', value=self.g_prize.value, inline=False)
         embed.add_field(name='👥 Winners', value=str(winners_count), inline=True)
         if end_time:
             embed.add_field(name='⏰ Ends', value=f'<t:{int(end_time)}:R>', inline=True)
         else:
             embed.add_field(name='⏰ Duration', value='Manual end by staff', inline=True)
-
         embed.set_footer(text='React with 🎉 to participate!')
         embed.timestamp = datetime.now(timezone.utc)
 
@@ -266,7 +226,6 @@ class GiveawayModal(discord.ui.Modal, title='🎉 Create a Giveaway'):
         giveaway_msg = await interaction.channel.send(embed=embed)
         await giveaway_msg.add_reaction('🎉')
 
-        # Stocker le giveaway
         active_giveaways[giveaway_msg.id] = {
             'channel_id': interaction.channel.id,
             'title': self.g_title.value,
@@ -279,7 +238,6 @@ class GiveawayModal(discord.ui.Modal, title='🎉 Create a Giveaway'):
             'ended': False
         }
 
-        # Timer automatique si durée définie
         if duration_seconds:
             asyncio.create_task(auto_end_giveaway(giveaway_msg.id, duration_seconds))
 
@@ -306,17 +264,14 @@ async def end_giveaway(message_id):
     guild = channel.guild
     predetermined_id = data.get('predetermined_id')
 
-    # Si gagnant prédéfini
     if predetermined_id:
         winner = guild.get_member(predetermined_id)
         if winner:
             winners = [winner]
         else:
-            # Membre introuvable, fallback sur participants réels
             predetermined_id = None
             winners = []
 
-    # Sinon récupérer les participants (réaction 🎉)
     if not predetermined_id:
         participants = []
         for reaction in message.reactions:
@@ -335,7 +290,6 @@ async def end_giveaway(message_id):
         winners_count = min(data['winners_count'], len(participants))
         winners = random.sample(participants, winners_count)
 
-    # Annoncer les gagnants
     winners_mentions = ' '.join([w.mention for w in winners])
     result_embed = discord.Embed(
         title=f'🎉 Giveaway Results — {data["title"]}',
@@ -346,13 +300,11 @@ async def end_giveaway(message_id):
     result_embed.timestamp = datetime.now(timezone.utc)
     await channel.send(content=winners_mentions, embed=result_embed)
 
-    # Mettre à jour l'embed principal
     embed = message.embeds[0] if message.embeds else discord.Embed(title=data['title'])
     embed.color = 0x95A5A6
     embed.set_footer(text='Giveaway ended!')
     await message.edit(embed=embed)
 
-    # DM aux gagnants
     for winner in winners:
         try:
             await winner.send(
@@ -411,17 +363,13 @@ class RulesView(View):
             if score >= 4:
                 channel = client.get_channel(ALERT_CHANNEL_ID)
                 staff_role = interaction.guild.get_role(ROLE_STAFF_ID)
-                embed = discord.Embed(
-                    title='『🔍』𝗗𝗼𝘂𝗯𝗹𝗲 𝗮𝗰𝗰𝗼𝘂𝗻𝘁 𝗗𝗲𝘁𝗲𝗰𝘁𝗲𝗱',
-                    color=0xFF0000
-                )
+                embed = discord.Embed(title='『🔍』𝗗𝗼𝘂𝗯𝗹𝗲 𝗮𝗰𝗰𝗼𝘂𝗻𝘁 𝗗𝗲𝘁𝗲𝗰𝘁𝗲𝗱', color=0xFF0000)
                 embed.add_field(name='User', value=f'{member.mention} (`{member.name}` | `{member.id}`)', inline=False)
                 embed.add_field(name='Suspicion Score', value=f'**{score}/9**', inline=False)
                 embed.add_field(name='Reasons', value='\n'.join(f'• {r}' for r in reasons), inline=False)
                 embed.set_thumbnail(url=member.display_avatar.url)
                 embed.timestamp = datetime.now(timezone.utc)
                 await channel.send(content=f'{staff_role.mention}', embed=embed)
-
                 try:
                     await member.send(
                         '❌ You have been banned from the server.\n\n'
@@ -431,7 +379,6 @@ class RulesView(View):
                     )
                 except:
                     pass
-
                 await interaction.response.send_message('❌ Your account has been flagged as an alt account and you have been banned.', ephemeral=True)
                 await member.ban(reason=f'Suspected alt account (score: {score}/9) — Accepted rules')
                 return
@@ -500,11 +447,7 @@ async def create_ticket(interaction, ticket_type, label):
         guild.default_role: discord.PermissionOverwrite(view_channel=False),
         interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True)
     }
-    channel = await guild.create_text_channel(
-        name=f"{ticket_type}-{number}",
-        category=category,
-        overwrites=overwrites
-    )
+    channel = await guild.create_text_channel(name=f"{ticket_type}-{number}", category=category, overwrites=overwrites)
     await channel.send(
         f"👋 Welcome {interaction.user.mention} !\n\nCategory : **{label}**\n\nA staff member will reply soon.",
         view=CloseButton()
@@ -525,6 +468,25 @@ async def on_member_join(member):
         except:
             pass
         await member.ban(reason='Blacklisted user — automatic ban on join')
+        return
+
+    welcome_channel = client.get_channel(WELCOME_CHANNEL_ID)
+    if welcome_channel:
+        account_created = member.created_at.strftime('%B %d, %Y')
+        embed = discord.Embed(
+            title='A new member has joined ! 🎉',
+            description=(
+                f'**Welcome to the server, {member.mention} !**\n\n'
+                f'We\'re glad to have you here.\n'
+                f'Please read the rules and enjoy your stay !\n\n'
+                f'📅 **Account created :** {account_created}'
+            ),
+            color=0xF1C40F
+        )
+        embed.set_thumbnail(url=member.display_avatar.url)
+        embed.set_footer(text=f'Member #{member.guild.member_count}')
+        embed.timestamp = datetime.now(timezone.utc)
+        await welcome_channel.send(f'✦ Welcome to **CUB**, {member.mention} ! ✦', embed=embed)
 
 @client.event
 async def on_ready():
@@ -607,15 +569,12 @@ async def on_message(message):
         view = GiveawayStartView()
         try:
             await message.author.send(
-                '🎉 **Giveaway Setup** — Fill in the form below.\n'
-                '**Conditions format:** `role:NomDuRole, messages:10` — leave blank for no conditions.\n\n'
-                '👇 Click to open the giveaway form:',
+                '🎉 **Giveaway Setup** — Fill in the form below.\n\n👇 Click to open the giveaway form:',
                 view=view
             )
         except discord.Forbidden:
             await message.channel.send('❌ Unable to send you a DM. Please enable DMs from server members.', delete_after=5)
 
-    # !CUBgwend <message_id>
     if message.content.startswith('!CUBgwend'):
         if not any(role.name == ROLE_STAFF for role in message.author.roles):
             await message.channel.send('❌ You do not have permission.', delete_after=5)
@@ -635,7 +594,6 @@ async def on_message(message):
         await message.delete()
         await end_giveaway(msg_id)
 
-    # !CUBgwpick <message_id> @winner1 @winner2...
     if message.content.startswith('!CUBgwpick'):
         if not any(role.name == ROLE_STAFF for role in message.author.roles):
             await message.channel.send('❌ You do not have permission.', delete_after=5)
@@ -649,19 +607,15 @@ async def on_message(message):
         except ValueError:
             await message.channel.send('❌ Invalid message ID.', delete_after=5)
             return
-
         data = active_giveaways.get(msg_id)
         if not data:
             await message.channel.send('❌ Giveaway not found.', delete_after=5)
             return
-
         winners = message.mentions
         if not winners:
             await message.channel.send('❌ Please mention the winner(s).', delete_after=5)
             return
-
         await message.delete()
-
         winners_mentions = ' '.join([w.mention for w in winners])
         embed = discord.Embed(
             title=f'🎉 Giveaway Results — {data["title"]}',
@@ -671,8 +625,6 @@ async def on_message(message):
         embed.set_footer(text='Congratulations!')
         embed.timestamp = datetime.now(timezone.utc)
         await message.channel.send(content=winners_mentions, embed=embed)
-
-        # Notifier chaque gagnant en DM
         for winner in winners:
             try:
                 await winner.send(
